@@ -274,3 +274,191 @@
 .completed-tasks {
     margin-left: 16px;
 }
+
+/* ============================================
+   New Task Glow Effect (FEAT-001)
+   ============================================ */
+
+/* Applied when new task is added */
+.new-task-glow {
+    animation: newTaskNeonGlow 2000ms ease-out forwards;
+    box-shadow: 0 0 20px var(--color-neon-lime),
+                0 0 40px var(--color-neon-lime),
+                0 0 60px rgba(200, 255, 0, 0.6);
+    border-color: var(--color-neon-lime) !important;
+    z-index: 10;
+}
+
+@keyframes newTaskNeonGlow {
+    0% {
+        box-shadow: 0 0 5px var(--color-neon-lime),
+                    0 0 10px var(--color-neon-lime);
+        transform: scale(1.02);
+    }
+    15% {
+        box-shadow: 0 0 30px var(--color-neon-lime),
+                    0 0 60px var(--color-neon-lime),
+                    0 0 90px rgba(200, 255, 0, 0.7);
+        transform: scale(1.05);
+        border-color: var(--color-neon-lime);
+    }
+    30% {
+        box-shadow: 0 0 25px var(--color-neon-lime),
+                    0 0 50px var(--color-neon-lime),
+                    0 0 75px rgba(200, 255, 0, 0.5);
+        transform: scale(1.02);
+    }
+    60% {
+        box-shadow: 0 0 15px var(--color-neon-lime),
+                    0 0 30px rgba(200, 255, 0, 0.4);
+        transform: scale(1);
+    }
+    100% {
+        box-shadow: none;
+        transform: scale(1);
+    }
+}
+
+/* Task entrance animation */
+.task-entrance {
+    animation: taskEnter 300ms ease-out forwards;
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
+@keyframes taskEnter {
+    0% {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Flash success/error states for quick-add bar */
+.flash-success {
+    animation: flashSuccess 300ms ease-out;
+}
+
+.flash-error {
+    animation: flashError 300ms ease-out;
+}
+
+@keyframes flashSuccess {
+    0% {
+        box-shadow: 0 0 0 0 var(--color-neon-lime);
+    }
+    50% {
+        box-shadow: 0 0 20px 5px rgba(200, 255, 0, 0.5);
+        border-color: var(--color-neon-lime);
+    }
+    100% {
+        box-shadow: none;
+    }
+}
+
+@keyframes flashError {
+    0% {
+        box-shadow: 0 0 0 0 var(--color-error);
+    }
+    50% {
+        box-shadow: 0 0 20px 5px rgba(255, 45, 107, 0.5);
+        border-color: var(--color-error);
+    }
+    100% {
+        box-shadow: none;
+    }
+}
+
+/* ============================================
+   Error Message Styling
+   ============================================ */
+
+.error-message {
+    color: var(--color-error);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.error-message::before {
+    content: '⚠';
+}
+
+.input-error {
+    border-color: var(--color-error) !important;
+    animation: inputShake 300ms ease-out;
+}
+
+@keyframes inputShake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-5px); }
+    40% { transform: translateX(5px); }
+    60% { transform: translateX(-5px); }
+    80% { transform: translateX(5px); }
+}
+
+/* ============================================
+   Due Date Badge Styling
+   ============================================ */
+
+.due-date-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(200, 255, 0, 0.15);
+    color: var(--color-neon-lime);
+    border: 1px solid rgba(200, 255, 0, 0.3);
+}
+
+.due-date-badge.overdue {
+    background: rgba(255, 45, 107, 0.2);
+    color: var(--color-pink);
+    border-color: rgba(255, 45, 107, 0.4);
+}
+
+.due-date-badge.today {
+    background: rgba(255, 149, 0, 0.2);
+    color: var(--color-orange);
+    border-color: rgba(255, 149, 0, 0.4);
+    animation: dueTodayPulse 2s ease-in-out infinite;
+}
+
+@keyframes dueTodayPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.due-date-badge.tomorrow {
+    background: rgba(0, 240, 255, 0.2);
+    color: var(--color-cyan);
+    border-color: rgba(0, 240, 255, 0.4);
+}
+
+.due-date-badge.this-week {
+    background: rgba(155, 93, 229, 0.2);
+    color: var(--color-purple);
+    border-color: rgba(155, 93, 229, 0.4);
+}
+
+.due-date-badge.future {
+    background: rgba(102, 102, 102, 0.2);
+    color: var(--color-muted);
+    border-color: rgba(102, 102, 102, 0.4);
+}
+
+/* Task card with glow border animation */
+.task-card {
+    transition: all 0.3s ease;
+}
+
+.task-card:hover {
+    transform: translateX(5px);
+    box-shadow: 0 0 15px rgba(200, 255, 0, 0.2);
+}
