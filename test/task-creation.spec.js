@@ -524,6 +524,55 @@ const FEAT001 = (function() {
             assertEqual(successCount, 2, 'Both creations should trigger success callback');
         });
 
+        test('Edge Case: Duplicate detection persists across resets', () => {
+            const handler = new TaskCreationHandler();
+
+            handler.createTask({ title: 'Persisted' });
+            handler.reset();
+            
+            // After reset, creating same name should NOT be a duplicate
+            const result = handler.createTask({ title: 'Persisted' });
+            
+            assertFalse(result.isDuplicate, 'After reset, same name is not duplicate');
+        });
+
+        test('Edge Case: Multiple duplicates in sequence are all flagged', () => {
+            const handler = new TaskCreationHandler();
+
+            handler.createTask({ title: 'Original' });
+            const result1 = handler.createTask({ title: 'Original' });
+            const result2 = handler.createTask({ title: 'original' });
+            const result3 = handler.createTask({ title: 'ORIGINAL' });
+
+            assertTrue(result1.isDuplicate, 'First duplicate should be flagged');
+            assertTrue(result2.isDuplicate, 'Second duplicate should be flagged');
+            assertTrue(result3.isDuplicate, 'Third duplicate should be flagged');
+            assertEqual(handler.getAllTasks().length, 4, 'All tasks should be created');
+        });
+
+        test('Edge Case: Duplicate with due date retains both fields', () => {
+            const handler = new TaskCreationHandler();
+
+            handler.createTask({ title: 'Meeting', dueDate: '2026-04-25' });
+            const result = handler.createTask({ title: 'Meeting', dueDate: '2026-04-26' });
+
+            assertTrue(result.isDuplicate, 'Should be marked duplicate');
+            assertEqual(result.task.dueDate, '2026-04-26', 'Due date should be retained');
+            assertEqual(result.task.title, 'Meeting', 'Title should be retained');
+        });
+
+        test('Edge Case: First task is never marked as duplicate', () => {
+            const handler = new TaskCreationHandler();
+
+            const result1 = handler.createTask({ title: 'First' });
+            const result2 = handler.createTask({ title: 'Second' });
+            const result3 = handler.createTask({ title: 'Third' });
+
+            assertFalse(result1.isDuplicate, 'First task should not be duplicate');
+            assertFalse(result2.isDuplicate, 'Second task should not be duplicate');
+            assertFalse(result3.isDuplicate, 'Third task should not be duplicate');
+        });
+
         // ========================================
         // Title Validation Edge Cases
         // ========================================
