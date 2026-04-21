@@ -8,24 +8,54 @@ class TaskListView {
     this.store = store;
     this.container = document.querySelector(containerSelector) || document.querySelector('#app-main');
     this.animatingTasks = new Set();
+    this.openMenuId = null;
+    this.draggedCard = null;
     
     this.init();
     this.bindEvents();
   }
 
+  renderNoResultsState() {
+    return `
+      <div class="no-results-state">
+        <div class="no-results-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </div>
+        <h3 class="no-results-title">No tasks found</h3>
+        <p class="no-results-description">Try a different search term</p>
+      </div>
+    `;
+  }
+
   init() {
-    // Create task list container structure
     this.render();
+    this.initSearch();
     
-    // Listen for store changes
     this.store.on('store:task:added', (task) => this.onTaskAdded(task));
     this.store.on('store:task:updated', (task) => this.onTaskUpdated(task));
     this.store.on('store:task:deleted', (task) => this.onTaskDeleted(task));
     this.store.on('store:list:activated', (data) => this.onListChanged(data));
+    this.store.on('store:search:changed', () => this.renderTasks());
+  }
+
+  initSearch() {
+    const searchInput = document.querySelector('.global-search');
+    if (searchInput) {
+      let debounceTimer;
+      searchInput.addEventListener('input', (e) => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          this.store.setSearchQuery(e.target.value);
+          this.renderTasks();
+        }, 200);
+      });
+    }
   }
 
   render() {
-    // Ensure basic structure exists
     if (!this.container.querySelector('.quick-add-bar')) {
       this.renderQuickAddBar();
     }
@@ -39,6 +69,9 @@ class TaskListView {
       taskList.className = 'task-list';
       this.container.appendChild(taskList);
     }
+    
+    // Render the actual tasks
+    this.renderTasks();
   }
 
   renderQuickAddBar() {
@@ -48,14 +81,12 @@ class TaskListView {
     quickAddBar.placeholder = 'Add a task... (press Enter)';
     quickAddBar.setAttribute('aria-label', 'Add new task');
     
-    // Insert at top
     if (this.container.firstChild) {
       this.container.insertBefore(quickAddBar, this.container.firstChild);
     } else {
       this.container.appendChild(quickAddBar);
     }
     
-    // Bind quick-add behavior
     quickAddBar.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
@@ -84,7 +115,6 @@ class TaskListView {
       <span class="task-count">0 tasks</span>
     `;
     
-    // Insert after quick-add bar
     const quickAdd = this.container.querySelector('.quick-add-bar');
     if (quickAdd && quickAdd.nextSibling) {
       this.container.insertBefore(header, quickAdd.nextSibling);
@@ -97,52 +127,64 @@ class TaskListView {
     const taskList = this.container.querySelector('.task-list');
     if (!taskList) return;
 
-    const tasks = this.store.getTasks(this.store.getActiveListId());
+    const tasks = this.store.getTasks(this.store.getActiveListId(), this.store.getSearchQuery());
     const activeList = this.store.getLists().find(l => l.id === this.store.getActiveListId());
     
-    // Update header
     const header = this.container.querySelector('.task-list-header');
     if (header) {
       header.querySelector('.list-name').textContent = activeList?.name || 'Tasks';
       header.querySelector('.task-count').textContent = `${tasks.length} task${tasks.length !== 1 ? 's' : ''}`;
     }
 
-    // Clear and rebuild
     taskList.innerHTML = '';
     
     if (tasks.length === 0) {
-      taskList.innerHTML = this.renderEmptyState();
+      const allTasks = this.store.getTasks(this.store.getActiveListId());
+      if (allTasks.length === 0) {
+        taskList.innerHTML = this.renderEmptyState();
+      } else {
+        taskList.innerHTML = this.renderNoResultsState();
+      }
       return;
     }
 
-    // Render active (incomplete) tasks
     const activeTasks = tasks.filter(t => !t.completed);
     const completedTasks = tasks.filter(t => t.completed);
 
     activeTasks.forEach((task, index) => {
       const card = this.createTaskCard(task);
       card.style.animationDelay = `${index * 50}ms`;
+      this.initDragAndDrop(card);
       taskList.appendChild(card);
     });
 
-    // Completed section
     if (completedTasks.length > 0) {
       const completedSection = document.createElement('div');
-      completedSection.className = 'completed-section';
+      completedSection.className = 'completed-section expanded';
       completedSection.innerHTML = `
-        <button class="completed-header">
-          <span class="checkmark">✓</span>
-          <span>${completedTasks.length} completed</span>
+        <button class="completed-header expanded">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+          <span class="completed-count">${completedTasks.length}</span>
+          <span>completed</span>
         </button>
+        <div class="completed-tasks"></div>
       `;
 
-      const completedList = document.createElement('div');
-      completedList.className = 'completed-tasks';
+      const completedList = completedSection.querySelector('.completed-tasks');
       completedTasks.forEach(task => {
-        completedList.appendChild(this.createTaskCard(task));
+        const card = this.createTaskCard(task);
+        this.initDragAndDrop(card);
+        completedList.appendChild(card);
       });
 
-      completedSection.appendChild(completedList);
+      const header = completedSection.querySelector('.completed-header');
+      header.addEventListener('click', () => {
+        completedSection.classList.toggle('expanded');
+        header.classList.toggle('expanded');
+      });
+
       taskList.appendChild(completedSection);
     }
   }
@@ -151,58 +193,228 @@ class TaskListView {
     const card = document.createElement('div');
     card.className = `task-card ${task.completed ? 'task-completed' : ''} priority-${task.priority}`;
     card.dataset.id = task.id;
+    card.draggable = true;
 
-    // Priority border color
-    const priorityColors = {
-      low: 'var(--color-muted)',
-      medium: 'var(--color-purple)',
-      high: 'var(--color-orange)',
-      urgent: 'var(--color-pink)'
-    };
-
-    // Due date display
     let dueDateBadge = '';
     if (task.dueDate) {
       const dueInfo = this.formatDueDate(task.dueDate);
       dueDateBadge = `<span class="due-date-badge ${dueInfo.class}">${dueInfo.text}</span>`;
     }
 
-    // Completion checkbox
     const checkbox = `
       <button class="task-checkbox ${task.completed ? 'checked' : ''}" 
               aria-label="${task.completed ? 'Mark incomplete' : 'Mark complete'}"
               data-action="toggle-complete">
-        ${task.completed ? '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>' : ''}
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
       </button>
     `;
 
-    // Priority indicator
-    const priorityIndicator = `
-      <span class="priority-indicator" style="background-color: ${priorityColors[task.priority]}"></span>
+    // Wrap menu in a positioned wrapper
+    const menuWrapper = `
+      <div class="task-menu-wrapper">
+        <button class="task-menu-btn" aria-label="Task options" data-task-id="${task.id}">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="1"/>
+            <circle cx="19" cy="12" r="1"/>
+            <circle cx="5" cy="12" r="1"/>
+          </svg>
+        </button>
+        <div class="task-menu-dropdown" data-task-id="${task.id}">
+          <div class="task-menu-item" data-action="edit" data-task-id="${task.id}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+            </svg>
+            <span>Edit</span>
+          </div>
+          <div class="task-menu-item danger" data-action="delete" data-task-id="${task.id}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18"/>
+              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+            </svg>
+            <span>Delete</span>
+          </div>
+        </div>
+      </div>
     `;
 
     card.innerHTML = `
-      ${priorityIndicator}
       ${checkbox}
       <div class="task-content">
-        <span class="task-title">${task.title}</span>
+        <span class="task-title">${this.escapeHtml(task.title)}</span>
         ${dueDateBadge}
       </div>
-      <button class="task-menu-btn" aria-label="Task options">⋮</button>
+      ${menuWrapper}
     `;
 
-    // Bind events
     const checkboxEl = card.querySelector('.task-checkbox');
     checkboxEl.addEventListener('click', () => this.toggleTaskComplete(task.id));
 
     const titleEl = card.querySelector('.task-title');
     titleEl.addEventListener('dblclick', () => this.startInlineEdit(card, task));
 
-    // Add entrance animation class
     card.classList.add('task-entrance');
     setTimeout(() => card.classList.remove('task-entrance'), 300);
 
     return card;
+  }
+
+  initDragAndDrop(card) {
+    let dragStarted = false;
+    let dragTimeout = null;
+    
+    // Use a small delay before allowing drag start
+    // This allows double-click on title to work without starting a drag
+    const startDrag = (e) => {
+      if (dragTimeout) {
+        clearTimeout(dragTimeout);
+        dragTimeout = null;
+      }
+      dragTimeout = setTimeout(() => {
+        if (!dragStarted) {
+          dragStarted = true;
+          this.draggedCard = card;
+          card.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', card.dataset.id);
+        }
+      }, 150);
+    };
+    
+    card.addEventListener('mousedown', (e) => {
+      // Don't start drag if clicking on checkbox or menu buttons
+      if (e.target.closest('.task-checkbox') || e.target.closest('.task-menu-btn')) {
+        return;
+      }
+      startDrag(e);
+    });
+    
+    card.addEventListener('dragstart', (e) => {
+      this.draggedCard = card;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', card.dataset.id);
+    });
+
+    card.addEventListener('dragend', () => {
+      if (dragTimeout) {
+        clearTimeout(dragTimeout);
+        dragTimeout = null;
+      }
+      dragStarted = false;
+      card.classList.remove('dragging');
+      this.draggedCard = null;
+      document.querySelectorAll('.task-card').forEach(c => {
+        c.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
+      });
+    });
+
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      
+      if (this.draggedCard && this.draggedCard !== card) {
+        card.classList.add('drag-over');
+        const rect = card.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        
+        card.classList.remove('drag-over-top', 'drag-over-bottom');
+        if (e.clientY < midY) {
+          card.classList.add('drag-over-top');
+        } else {
+          card.classList.add('drag-over-bottom');
+        }
+      }
+    });
+
+    card.addEventListener('dragleave', () => {
+      card.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
+    });
+
+    card.addEventListener('drop', (e) => {
+      e.preventDefault();
+      
+      if (this.draggedCard && this.draggedCard !== card) {
+        const draggedId = this.draggedCard.dataset.id;
+        const targetId = card.dataset.id;
+        
+        const rect = card.getBoundingClientRect();
+        const insertBefore = e.clientY < rect.top + rect.height / 2;
+        
+        this.reorderTasks(draggedId, targetId, insertBefore);
+      }
+      
+      card.classList.remove('drag-over', 'drag-over-top', 'drag-over-bottom');
+    });
+  }
+
+  reorderTasks(draggedId, targetId, insertBefore) {
+    const tasks = this.store.getTasks(this.store.getActiveListId());
+    const draggedTask = tasks.find(t => t.id === draggedId);
+    const targetTask = tasks.find(t => t.id === targetId);
+    
+    if (!draggedTask || !targetTask) return;
+    
+    // Calculate new order
+    const targetOrder = targetTask.order;
+    
+    if (insertBefore) {
+      // Insert before target
+      const prevTask = tasks.find(t => t.order < targetOrder && t.id !== draggedId);
+      if (prevTask) {
+        // Place between prev and target
+        const newOrder = (prevTask.order + targetOrder) / 2;
+        this.store.updateTask(draggedId, { order: newOrder });
+      } else {
+        // Place at beginning
+        const newOrder = targetOrder - 1;
+        this.store.updateTask(draggedId, { order: newOrder });
+      }
+    } else {
+      // Insert after target
+      const nextTask = tasks.find(t => t.order > targetOrder && t.id !== draggedId);
+      if (nextTask) {
+        // Place between target and next
+        const newOrder = (targetOrder + nextTask.order) / 2;
+        this.store.updateTask(draggedId, { order: newOrder });
+      } else {
+        // Place at end
+        const newOrder = targetOrder + 1;
+        this.store.updateTask(draggedId, { order: newOrder });
+      }
+    }
+  }
+
+  toggleTaskMenu(taskId) {
+    if (this.openMenuId && this.openMenuId !== taskId) {
+      const prevDropdown = document.querySelector(`.task-menu-dropdown[data-task-id="${this.openMenuId}"]`);
+      if (prevDropdown) {
+        prevDropdown.classList.remove('open');
+      }
+    }
+
+    const dropdown = document.querySelector(`.task-menu-dropdown[data-task-id="${taskId}"]`);
+    
+    if (dropdown) {
+      // CSS handles positioning via absolute positioning within task-menu-wrapper
+      dropdown.classList.toggle('open');
+      this.openMenuId = dropdown.classList.contains('open') ? taskId : null;
+    }
+  }
+
+  closeAllMenus() {
+    document.querySelectorAll('.task-menu-dropdown.open').forEach(menu => {
+      menu.classList.remove('open');
+    });
+    this.openMenuId = null;
+  }
+
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   formatDueDate(dateStr) {
@@ -242,16 +454,13 @@ class TaskListView {
     
     if (task && card) {
       if (!task.completed) {
-        // Trigger visual completion animation
         if (window.taskCompletionAnimations) {
           window.taskCompletionAnimations.animateCompletion(card);
         }
-        // Small delay before updating store state
         setTimeout(() => {
           this.store.updateTask(taskId, { completed: true });
         }, 100);
       } else {
-        // Trigger uncomplete animation
         if (window.taskCompletionAnimations) {
           window.taskCompletionAnimations.animateUncomplete(card);
         }
@@ -264,6 +473,11 @@ class TaskListView {
 
   startInlineEdit(card, task) {
     const titleEl = card.querySelector('.task-title');
+    if (!titleEl) {
+      console.error('Could not find task title element');
+      return;
+    }
+    
     const currentTitle = task.title;
     
     const input = document.createElement('input');
@@ -274,13 +488,15 @@ class TaskListView {
     titleEl.replaceWith(input);
     input.focus();
     input.select();
+    
+    // Store reference for blur handler
+    const originalTitle = titleEl;
 
     const finishEdit = (save) => {
       const newTitle = input.value.trim();
       if (save && newTitle && newTitle !== currentTitle) {
         this.store.updateTask(task.id, { title: newTitle });
       } else if (!newTitle) {
-        // Revert and flash error
         this.store.updateTask(task.id, { title: currentTitle });
         card.classList.add('flash-error');
         setTimeout(() => card.classList.remove('flash-error'), 300);
@@ -299,15 +515,46 @@ class TaskListView {
     input.addEventListener('blur', () => finishEdit(true));
   }
 
+  confirmDelete(taskId) {
+    const task = this.store.getTask(taskId);
+    if (!task) return;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'confirmation-overlay';
+    overlay.innerHTML = `
+      <div class="confirmation-dialog">
+        <h3>Delete Task?</h3>
+        <p>Are you sure you want to delete "${this.escapeHtml(task.title)}"? This action cannot be undone.</p>
+        <div class="dialog-buttons">
+          <button class="btn-cancel" data-action="cancel-delete">Cancel</button>
+          <button class="btn-confirm-delete" data-action="confirm-delete" data-task-id="${taskId}">Delete</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener('click', (e) => {
+      const action = e.target.dataset.action;
+      if (action === 'cancel-delete') {
+        overlay.remove();
+      } else if (action === 'confirm-delete') {
+        const idToDelete = e.target.dataset.taskId;
+        overlay.remove();
+        this.store.deleteTask(idToDelete);
+      }
+    });
+  }
+
   renderEmptyState() {
     return `
       <div class="empty-state">
         <div class="empty-icon">
-          <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="12" y="8" width="40" height="48" rx="4" />
-            <line x1="20" y1="20" x2="44" y2="20" />
-            <line x1="20" y1="32" x2="44" y2="32" />
-            <line x1="20" y1="44" x2="36" y2="44" />
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <line x1="9" y1="9" x2="15" y2="9"/>
+            <line x1="9" y1="13" x2="15" y2="13"/>
+            <line x1="9" y1="17" x2="12" y2="17"/>
           </svg>
         </div>
         <h3 class="empty-title">No tasks yet</h3>
@@ -325,7 +572,6 @@ class TaskListView {
   onTaskAdded(task) {
     this.renderTasks();
     
-    // Add neon glow effect to new task
     const newCard = this.container.querySelector(`.task-card[data-id="${task.id}"]`);
     if (newCard) {
       newCard.classList.add('new-task-glow');
@@ -346,27 +592,52 @@ class TaskListView {
   }
 
   onListChanged(data) {
+    const searchInput = document.querySelector('.global-search');
+    if (searchInput) {
+      searchInput.value = '';
+    }
+    this.store.setSearchQuery('');
     this.renderTasks();
   }
 
   bindEvents() {
-    // New task button from empty state
     this.container.addEventListener('click', (e) => {
       if (e.target.classList.contains('btn-new-task-empty')) {
         window.dispatchEvent(new CustomEvent('neonflow:open-task-modal'));
       }
-    });
 
-    // Delegate task card interactions
-    this.container.addEventListener('click', (e) => {
       const menuBtn = e.target.closest('.task-menu-btn');
       if (menuBtn) {
-        // Open task menu (can be expanded)
-        menuBtn.classList.toggle('active');
+        e.stopPropagation();
+        const taskId = menuBtn.dataset.taskId;
+        this.toggleTaskMenu(taskId);
+      }
+
+      const menuItem = e.target.closest('.task-menu-item');
+      if (menuItem) {
+        e.stopPropagation();
+        const action = menuItem.dataset.action;
+        const taskId = menuItem.dataset.taskId;
+        
+        this.closeAllMenus();
+
+        if (action === 'edit') {
+          // Open full modal for editing
+          if (window.taskCreationUI) {
+            window.taskCreationUI.openEditModal(taskId);
+          }
+        } else if (action === 'delete') {
+          this.confirmDelete(taskId);
+        }
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.task-menu-dropdown') && !e.target.closest('.task-menu-btn')) {
+        this.closeAllMenus();
       }
     });
   }
 }
 
-// Make TaskListView available globally
 window.TaskListView = TaskListView;
