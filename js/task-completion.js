@@ -175,10 +175,152 @@ class TaskCompletionAnimations {
   }
 }
 
+/**
+ * TaskCompletionHandler - Wraps TaskCompletionAnimations with state management
+ * Handles edge cases like completing already complete tasks
+ */
+class TaskCompletionHandler {
+  constructor() {
+    this.animations = new TaskCompletionAnimations();
+    this.completedTasks = new Map(); // taskId -> { completed: true, timestamp }
+    this.debounceTimers = new Map();
+    this.config = {
+      completionDuration: 400,
+      particleCount: 10
+    };
+  }
+
+  /**
+   * Complete a task with visual effects
+   * @param {string} taskId - The task ID to complete
+   * @param {Object} position - Optional position for particle effect
+   * @returns {Object} Result with success status and edge case info
+   */
+  completeTask(taskId, position = null) {
+    // Edge Case: Already complete task
+    if (this.completedTasks.has(taskId)) {
+      return {
+        success: false,
+        error: 'Task already completed',
+        edgeCase: 'already_complete',
+        taskId
+      };
+    }
+
+    // Mark as completed
+    this.completedTasks.set(taskId, {
+      completed: true,
+      timestamp: Date.now()
+    });
+
+    // Trigger animations via the TaskCompletionAnimations instance
+    const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+    if (taskElement) {
+      this.animations.animateCompletion(taskElement, position);
+    }
+
+    return {
+      success: true,
+      taskId,
+      animations: {
+        strikeThrough: true,
+        particles: true,
+        duration: this.config.completionDuration
+      }
+    };
+  }
+
+  /**
+   * Handle rapid completion attempts with debouncing
+   * @param {string} taskId - The task ID
+   * @param {Object} position - Optional position for particle effect
+   * @returns {Object} Result with success status
+   */
+  rapidComplete(taskId, position = null) {
+    const debounceKey = `rapid-${taskId}`;
+    
+    if (this.debounceTimers.has(debounceKey)) {
+      return {
+        success: false,
+        error: 'Operation debounced',
+        edgeCase: 'rapid_completion',
+        taskId
+      };
+    }
+
+    // Set debounce timer (100ms)
+    const timerId = setTimeout(() => {
+      this.debounceTimers.delete(debounceKey);
+    }, 100);
+    this.debounceTimers.set(debounceKey, timerId);
+
+    return this.completeTask(taskId, position);
+  }
+
+  /**
+   * Uncomplete a task (remove completion)
+   * @param {string} taskId - The task ID to uncomplete
+   * @returns {Object} Result with success status
+   */
+  uncompleteTask(taskId) {
+    if (!this.completedTasks.has(taskId)) {
+      return {
+        success: false,
+        error: 'Task is not completed',
+        edgeCase: 'not_complete',
+        taskId
+      };
+    }
+
+    this.completedTasks.delete(taskId);
+
+    const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+    if (taskElement) {
+      this.animations.animateUncomplete(taskElement);
+    }
+
+    return {
+      success: true,
+      taskId,
+      animations: {
+        strikeThrough: false,
+        duration: 300
+      }
+    };
+  }
+
+  /**
+   * Check if a task is completed
+   * @param {string} taskId - The task ID to check
+   * @returns {boolean} True if task is completed
+   */
+  isTaskCompleted(taskId) {
+    return this.completedTasks.has(taskId);
+  }
+
+  /**
+   * Get all completed task IDs
+   * @returns {string[]} Array of completed task IDs
+   */
+  getCompletedTaskIds() {
+    return Array.from(this.completedTasks.keys());
+  }
+
+  /**
+   * Reset all state (for testing)
+   */
+  reset() {
+    this.completedTasks.clear();
+    this.debounceTimers.forEach(timer => clearTimeout(timer));
+    this.debounceTimers.clear();
+    this.animations.clearParticles();
+  }
+}
+
 // Singleton instance
 window.taskCompletionAnimations = new TaskCompletionAnimations();
 
 // Export for testing
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = TaskCompletionAnimations;
+  module.exports = { TaskCompletionAnimations, TaskCompletionHandler };
 }
