@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "NEONFLOW - A visually striking task manager with neon aesthetics",
   "scripts": {
-    "test": "node test/run-feat002.js"
+    "test": "node test/run-feat001.js"
   },
   "devDependencies": {
     "jasmine": "^5.13.0"
