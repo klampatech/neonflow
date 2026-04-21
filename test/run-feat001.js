@@ -11,11 +11,26 @@ console.log('='.repeat(60) + '\n');
 // Run core tests
 const results = FEAT001.runTests();
 
+// Run DOM integration tests
+const domResults = FEAT001.runDOMIntegrationTests();
+
 let passed = 0;
 let failed = 0;
 
 console.log('📋 Unit Tests:\n');
 results.forEach(result => {
+    if (result.passed) {
+        console.log(`  ✅ ${result.name}`);
+        passed++;
+    } else {
+        console.log(`  ❌ ${result.name}`);
+        console.log(`     Error: ${result.error}`);
+        failed++;
+    }
+});
+
+console.log('\n📋 DOM Integration Tests:\n');
+domResults.forEach(result => {
     if (result.passed) {
         console.log(`  ✅ ${result.name}`);
         passed++;
