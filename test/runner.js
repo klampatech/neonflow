@@ -7,7 +7,14 @@ const FEAT002 = require('./task-completion.spec.js');
 console.log('\n🧪 NEONFLOW FEAT-002: Task Completion Tests\n');
 console.log('=' .repeat(50) + '\n');
 
+// Run core tests
 const results = FEAT002.runTests();
+
+// Run DOM integration tests
+if (typeof FEAT002.runDOMIntegrationTests === 'function') {
+    const domResults = FEAT002.runDOMIntegrationTests();
+    results.push(...domResults);
+}
 
 let passed = 0;
 let failed = 0;

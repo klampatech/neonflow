@@ -238,8 +238,27 @@ class TaskListView {
 
   toggleTaskComplete(taskId) {
     const task = this.store.getTask(taskId);
-    if (task) {
-      this.store.updateTask(taskId, { completed: !task.completed });
+    const card = this.container.querySelector(`.task-card[data-id="${taskId}"]`);
+    
+    if (task && card) {
+      if (!task.completed) {
+        // Trigger visual completion animation
+        if (window.taskCompletionAnimations) {
+          window.taskCompletionAnimations.animateCompletion(card);
+        }
+        // Small delay before updating store state
+        setTimeout(() => {
+          this.store.updateTask(taskId, { completed: true });
+        }, 100);
+      } else {
+        // Trigger uncomplete animation
+        if (window.taskCompletionAnimations) {
+          window.taskCompletionAnimations.animateUncomplete(card);
+        }
+        setTimeout(() => {
+          this.store.updateTask(taskId, { completed: false });
+        }, 100);
+      }
     }
   }
 

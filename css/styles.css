@@ -1,0 +1,276 @@
+/**
+ * NEONFLOW - Task Completion Animations
+ * FEAT-002: Visual feedback for task completion
+ * 
+ * Strike-through animations and particle effects
+ */
+
+/* ============================================
+   CSS Variables - Neon Color Palette
+   ============================================ */
+
+:root {
+    /* Core Neon Colors */
+    --color-neon-lime: #c8ff00;
+    --color-cyan: #00f0ff;
+    --color-pink: #ff2d6b;
+    --color-orange: #ff9500;
+    
+    /* Semantic Colors */
+    --color-muted: #666;
+    --color-purple: #9b5de5;
+    --color-success: #00f0ff;
+    --color-error: #ff2d6b;
+    
+    /* Animation Timings */
+    --duration-strike: 400ms;
+    --duration-glow: 600ms;
+    --duration-particle: 1000ms;
+}
+
+/* ============================================
+   Strike-Through Animation
+   ============================================ */
+
+/* Base strike-through styling */
+.strike-through {
+    text-decoration: line-through;
+    text-decoration-color: var(--color-neon-lime);
+    text-decoration-thickness: 2px;
+    text-decoration-style: solid;
+    opacity: 0.7;
+}
+
+/* Strike-through animation */
+.strike-animating {
+    animation: strikeDraw var(--duration-strike) ease-out forwards;
+}
+
+@keyframes strikeDraw {
+    0% {
+        text-decoration: line-through;
+        text-decoration-color: transparent;
+        opacity: 1;
+    }
+    50% {
+        text-decoration-color: var(--color-neon-lime);
+        opacity: 1;
+        text-shadow: 0 0 10px var(--color-neon-lime),
+                     0 0 20px var(--color-neon-lime),
+                     0 0 30px var(--color-neon-lime);
+    }
+    100% {
+        text-decoration-color: var(--color-neon-lime);
+        opacity: 0.7;
+        text-shadow: none;
+    }
+}
+
+/* ============================================
+   Completion Glow Effect
+   ============================================ */
+
+.completion-glow {
+    animation: neonPulse var(--duration-glow) ease-out;
+    box-shadow: 0 0 15px var(--color-neon-lime),
+                0 0 30px var(--color-neon-lime),
+                0 0 45px rgba(200, 255, 0, 0.5);
+}
+
+@keyframes neonPulse {
+    0% {
+        box-shadow: 0 0 5px var(--color-neon-lime);
+    }
+    30% {
+        box-shadow: 0 0 25px var(--color-neon-lime),
+                    0 0 50px var(--color-neon-lime),
+                    0 0 75px rgba(200, 255, 0, 0.6);
+    }
+    100% {
+        box-shadow: 0 0 5px transparent;
+    }
+}
+
+/* ============================================
+   Task Card Completion States
+   ============================================ */
+
+/* Completion animation state */
+.task-completed-animating {
+    animation: completionPop 300ms ease-out;
+}
+
+@keyframes completionPop {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+        background-color: rgba(200, 255, 0, 0.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Completed task card styling */
+.task-completed {
+    opacity: 0.6;
+    transition: opacity 0.3s ease;
+}
+
+.task-completed .task-title {
+    color: var(--color-muted);
+    text-decoration: line-through;
+    text-decoration-color: var(--color-neon-lime);
+}
+
+/* Uncomplete animation */
+.task-uncompleting {
+    animation: uncompleteReveal 300ms ease-out;
+}
+
+@keyframes uncompleteReveal {
+    0% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 0.9;
+        background-color: rgba(0, 240, 255, 0.1);
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+/* ============================================
+   Checkbox Animation
+   ============================================ */
+
+.task-checkbox {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--color-neon-lime);
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.task-checkbox:hover {
+    box-shadow: 0 0 10px var(--color-neon-lime),
+                inset 0 0 10px rgba(200, 255, 0, 0.2);
+}
+
+.task-checkbox.checked {
+    background: var(--color-neon-lime);
+    box-shadow: 0 0 15px var(--color-neon-lime);
+    animation: checkboxPop 200ms ease-out;
+}
+
+.task-checkbox.checked svg {
+    stroke: #000;
+    stroke-width: 3;
+    animation: checkDraw 200ms ease-out forwards;
+}
+
+.task-checkbox svg {
+    width: 14px;
+    height: 14px;
+    stroke: var(--color-neon-lime);
+    fill: none;
+    opacity: 0;
+}
+
+.task-checkbox.checked svg {
+    opacity: 1;
+}
+
+@keyframes checkboxPop {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes checkDraw {
+    0% {
+        stroke-dasharray: 20;
+        stroke-dashoffset: 20;
+    }
+    100% {
+        stroke-dasharray: 20;
+        stroke-dashoffset: 0;
+    }
+}
+
+/* ============================================
+   Particle Canvas
+   ============================================ */
+
+.particle-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+}
+
+/* ============================================
+   Particle Styling (via JS canvas)
+   Colors from neon palette:
+   - #c8ff00 (Electric Lime)
+   - #00f0ff (Cyan)
+   - #ff2d6b (Hot Pink)
+   - #ff9500 (Orange)
+   ============================================ */
+
+/* ============================================
+   Completed Section Styling
+   ============================================ */
+
+.completed-section {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(200, 255, 0, 0.2);
+}
+
+.completed-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: none;
+    border: none;
+    color: var(--color-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.completed-header:hover {
+    background: rgba(200, 255, 0, 0.1);
+    color: var(--color-neon-lime);
+}
+
+.completed-header .checkmark {
+    color: var(--color-neon-lime);
+    font-weight: bold;
+}
+
+.completed-tasks {
+    margin-left: 16px;
+}
