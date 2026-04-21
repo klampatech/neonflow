@@ -1,0 +1,11 @@
+{
+  "name": "neonflow",
+  "version": "1.0.0",
+  "description": "NEONFLOW - A visually striking task manager with neon aesthetics",
+  "scripts": {
+    "test": "node test/runner.js"
+  },
+  "devDependencies": {
+    "jasmine": "^5.13.0"
+  }
+}
