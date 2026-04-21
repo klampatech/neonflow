@@ -462,3 +462,304 @@
     transform: translateX(5px);
     box-shadow: 0 0 15px rgba(200, 255, 0, 0.2);
 }
+
+/* ============================================
+   FEAT-003: Task Deletion Styles
+   ============================================ */
+
+/* Task Deletion Glitch Effect */
+.task-deleting {
+    animation: glitchFadeOut 500ms ease-out forwards;
+    pointer-events: none;
+}
+
+@keyframes glitchFadeOut {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+        filter: none;
+    }
+    15% {
+        opacity: 1;
+        transform: scale(1.02) translateX(5px);
+        filter: hue-rotate(90deg) brightness(1.5);
+    }
+    30% {
+        opacity: 0.8;
+        transform: scale(0.98) translateX(-5px);
+        filter: hue-rotate(180deg) brightness(2);
+    }
+    45% {
+        opacity: 0.5;
+        transform: scale(1.01) translateX(3px);
+        filter: hue-rotate(270deg) brightness(1.8);
+    }
+    60% {
+        opacity: 0.3;
+        transform: scale(0.95) translateX(-3px);
+        filter: hue-rotate(360deg) brightness(1.5);
+    }
+    80% {
+        opacity: 0.1;
+        transform: scale(0.9) translateX(0);
+        filter: blur(2px);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.85);
+        filter: blur(5px);
+    }
+}
+
+/* Glitch effect overlay */
+.glitch-effect {
+    animation: glitchDistort 300ms steps(5) forwards;
+    position: relative;
+}
+
+.glitch-effect::before,
+.glitch-effect::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: inherit;
+}
+
+.glitch-effect::before {
+    animation: glitchSlice1 300ms steps(5) forwards;
+    color: var(--color-cyan);
+    mix-blend-mode: screen;
+}
+
+.glitch-effect::after {
+    animation: glitchSlice2 300ms steps(5) forwards;
+    color: var(--color-pink);
+    mix-blend-mode: screen;
+}
+
+@keyframes glitchDistort {
+    0% {
+        clip-path: inset(0 0 0 0);
+    }
+    20% {
+        clip-path: inset(20% 0 60% 0);
+        transform: translateX(-3px);
+        filter: hue-rotate(90deg);
+    }
+    40% {
+        clip-path: inset(50% 0 30% 0);
+        transform: translateX(3px);
+        filter: hue-rotate(180deg);
+    }
+    60% {
+        clip-path: inset(70% 0 10% 0);
+        transform: translateX(-2px);
+        filter: hue-rotate(270deg);
+    }
+    80% {
+        clip-path: inset(90% 0 0 0);
+        transform: translateX(2px);
+        filter: hue-rotate(360deg);
+    }
+    100% {
+        clip-path: inset(0 0 0 0);
+        transform: translateX(0);
+    }
+}
+
+@keyframes glitchSlice1 {
+    0% { transform: translateX(0); }
+    20% { transform: translateX(-5px) skewX(-5deg); }
+    40% { transform: translateX(5px) skewX(5deg); }
+    60% { transform: translateX(-3px) skewX(-3deg); }
+    80% { transform: translateX(3px) skewX(3deg); }
+    100% { transform: translateX(0); }
+}
+
+@keyframes glitchSlice2 {
+    0% { transform: translateX(0); }
+    20% { transform: translateX(5px) skewX(5deg); }
+    40% { transform: translateX(-5px) skewX(-5deg); }
+    60% { transform: translateX(3px) skewX(3deg); }
+    80% { transform: translateX(-3px) skewX(-3deg); }
+    100% { transform: translateX(0); }
+}
+
+/* Fade out animation */
+.fade-out {
+    animation: fadeOut 200ms ease-out forwards;
+}
+
+@keyframes fadeOut {
+    0% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+/* Delete button styling */
+.delete-btn {
+    background: transparent;
+    border: 1px solid var(--color-error);
+    color: var(--color-error);
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.delete-btn:hover {
+    background: var(--color-error);
+    color: #000;
+    box-shadow: 0 0 15px var(--color-error);
+}
+
+.delete-btn:active {
+    transform: scale(0.95);
+}
+
+/* Task menu delete option */
+.task-menu-btn {
+    background: transparent;
+    border: none;
+    color: var(--color-muted);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.task-menu-btn:hover {
+    background: rgba(255, 45, 107, 0.2);
+    color: var(--color-error);
+}
+
+/* Confirmation dialog overlay */
+.confirmation-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    animation: overlayFadeIn 200ms ease-out;
+}
+
+@keyframes overlayFadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+/* Confirmation dialog */
+.confirmation-dialog {
+    background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1a 100%);
+    border: 2px solid var(--color-neon-lime);
+    border-radius: 8px;
+    padding: 24px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 0 30px rgba(200, 255, 0, 0.3),
+                0 0 60px rgba(200, 255, 0, 0.1);
+    animation: dialogSlideIn 300ms ease-out;
+}
+
+@keyframes dialogSlideIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.9) translateY(-20px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.confirmation-dialog h3 {
+    color: var(--color-neon-lime);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 20px;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.confirmation-dialog p {
+    color: #fff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    margin-bottom: 24px;
+}
+
+.confirmation-dialog .dialog-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+/* Cancel button */
+.btn-cancel {
+    background: transparent;
+    border: 1px solid var(--color-muted);
+    color: var(--color-muted);
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.btn-cancel:hover {
+    border-color: #fff;
+    color: #fff;
+}
+
+/* Confirm delete button */
+.btn-confirm-delete {
+    background: var(--color-error);
+    border: 1px solid var(--color-error);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: bold;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+}
+
+
+.btn-confirm-delete:hover {
+    background: #ff5080;
+    box-shadow: 0 0 20px var(--color-error);
+}
+
+.btn-confirm-delete:active {
+    transform: scale(0.95);
+}
+
+/* Danger class for warning states */
+.danger {
+    color: var(--color-error);
+    border-color: var(--color-error);
+}
+
+/* Neon glitch colors reference:
+   - #c8ff00 (Electric Lime)
+   - #00f0ff (Cyan)
+   - #ff2d6b (Hot Pink)
+   - #ff9500 (Orange)
+*/
