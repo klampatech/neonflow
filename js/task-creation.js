@@ -7,6 +7,7 @@ class TaskCreationUI {
   constructor(store) {
     this.store = store;
     this.modalOpen = false;
+    this.editingTaskId = null; // Track if we're editing a task
     this.initQuickAdd();
     this.initTaskModal();
     this.bindEvents();
@@ -51,9 +52,6 @@ class TaskCreationUI {
     this.dueDateInput = this.modal.querySelector('.task-due-date-input');
     this.addButton = this.modal.querySelector('.btn-add-task');
     this.cancelButton = this.modal.querySelector('.btn-cancel');
-
-    // Set default date to today
-    this.dueDateInput.valueAsDate = new Date();
   }
 
   getPlaceholderText() {
@@ -65,10 +63,13 @@ class TaskCreationUI {
     return texts[Math.floor(Math.random() * texts.length)];
   }
 
-  getModalHTML() {
+  getModalHTML(isEdit = false) {
+    const title = isEdit ? 'Edit Task' : 'Add New Task';
+    const buttonText = isEdit ? 'Save Changes' : 'Add Task';
+    
     return `
       <div class="task-modal" role="dialog" aria-labelledby="modal-title">
-        <h2 id="modal-title" class="modal-title">Add New Task</h2>
+        <h2 id="modal-title" class="modal-title">${title}</h2>
         <form id="task-creation-form">
           <div class="form-group">
             <label for="task-title">Title</label>
@@ -129,7 +130,7 @@ class TaskCreationUI {
           
           <div class="modal-actions">
             <button type="button" class="btn-cancel">Cancel</button>
-            <button type="submit" class="btn-add-task">Add Task</button>
+            <button type="submit" class="btn-add-task">${buttonText}</button>
           </div>
         </form>
       </div>
@@ -215,10 +216,93 @@ class TaskCreationUI {
       listId: this.modal.querySelector('.task-list-select').value
     };
 
-    const task = this.store.addTask(taskData);
-    if (task) {
-      this.closeModal();
-      this.openModalForTask(task); // Trigger glow animation
+    // Check if we're editing or creating
+    if (this.editingTaskId) {
+      // Update existing task
+      const task = this.store.updateTask(this.editingTaskId, taskData);
+      if (task) {
+        this.closeModal();
+      }
+    } else {
+      // Create new task
+      const task = this.store.addTask(taskData);
+      if (task) {
+        this.closeModal();
+      }
+    }
+  }
+
+  // Open modal for editing an existing task
+  openEditModal(taskId) {
+    const task = this.store.getTask(taskId);
+    if (!task) {
+      console.error('Task not found:', taskId);
+      return;
+    }
+
+    this.editingTaskId = taskId;
+    this.hideErrors();
+    
+    // Re-create modal with edit content
+    this.modalOverlay.innerHTML = this.getModalHTML(true);
+    this.modal = this.modalOverlay.querySelector('.task-modal');
+    this.titleInput = this.modal.querySelector('.task-title-input');
+    this.descriptionInput = this.modal.querySelector('.task-description-input');
+    this.dueDateInput = this.modal.querySelector('.task-due-date-input');
+    this.addButton = this.modal.querySelector('.btn-add-task');
+    this.cancelButton = this.modal.querySelector('.btn-cancel');
+    
+    // Populate list dropdown
+    const listSelect = this.modal.querySelector('.task-list-select');
+    const lists = this.store.getLists();
+    listSelect.innerHTML = lists
+      .filter(l => !l.isSmartList || ['my-day', 'planned'].includes(l.id))
+      .map(l => `<option value="${l.id}" ${l.id === task.listId ? 'selected' : ''}>${l.name}</option>`)
+      .join('');
+
+    // Populate form with task data
+    this.titleInput.value = task.title || '';
+    this.descriptionInput.value = task.description || '';
+    this.dueDateInput.value = task.dueDate || '';
+    
+    // Set priority
+    const priorityRadio = this.modal.querySelector(`input[name="priority"][value="${task.priority || 'medium'}"]`);
+    if (priorityRadio) {
+      priorityRadio.checked = true;
+    }
+
+    // Re-bind form submit event
+    const form = this.modal.querySelector('#task-creation-form');
+    form.addEventListener('submit', (e) => this.handleFormSubmit(e));
+    
+    // Rebind cancel button
+    this.cancelButton.addEventListener('click', () => this.closeModal());
+
+    // Animate open
+    this.modalOverlay.style.display = 'flex';
+    this.modalOpen = true;
+    requestAnimationFrame(() => {
+      this.modalOverlay.classList.add('modal-open');
+      this.modal.classList.add('modal-visible');
+    });
+
+    // Focus title
+    this.titleInput.focus();
+  }
+
+  closeModal() {
+    this.modalOpen = false;
+    this.editingTaskId = null;
+    this.modalOverlay.classList.remove('modal-open');
+    this.modal.classList.remove('modal-visible');
+    
+    setTimeout(() => {
+      this.modalOverlay.style.display = 'none';
+    }, 300);
+
+    // Return focus to quick-add bar
+    if (this.quickAddBar) {
+      this.quickAddBar.focus();
     }
   }
 

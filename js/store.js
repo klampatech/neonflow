@@ -137,20 +137,75 @@ class Store {
   }
 
   // Task operations
-  getTasks(listId) {
+  getTasks(listId, searchQuery = '') {
     const list = this.state.lists.find(l => l.id === listId);
     
     if (!list) return [];
     
     // Smart list filtering
     if (list.isSmartList) {
-      return this.getSmartListTasks(listId);
+      let tasks = this.getSmartListTasks(listId);
+      
+      // Apply search filter
+      if (searchQuery && searchQuery.trim()) {
+        const query = searchQuery.toLowerCase().trim();
+        tasks = tasks.filter(t => 
+          t.title.toLowerCase().includes(query) ||
+          (t.description && t.description.toLowerCase().includes(query)) ||
+          (t.tags && t.tags.some(tag => tag.toLowerCase().includes(query)))
+        );
+      }
+      
+      return tasks;
     }
     
     // Regular list - return tasks for that list
+    let tasks = this.state.tasks
+      .filter(t => t.listId === listId)
+      .sort((a, b) => a.order - b.order);
+    
+    // Apply search filter
+    if (searchQuery && searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      tasks = tasks.filter(t => 
+        t.title.toLowerCase().includes(query) ||
+        (t.description && t.description.toLowerCase().includes(query)) ||
+        (t.tags && t.tags.some(tag => tag.toLowerCase().includes(query)))
+      );
+    }
+    
+    return tasks;
+  }
+
+  // Get tasks without search filter (for counts)
+  getTasksWithoutFilter(listId) {
+    const list = this.state.lists.find(l => l.id === listId);
+    
+    if (!list) return [];
+    
+    if (list.isSmartList) {
+      return this.getSmartListTasks(listId);
+    }
+    
     return this.state.tasks
       .filter(t => t.listId === listId)
       .sort((a, b) => a.order - b.order);
+  }
+
+  // Get overall stats for sidebar
+  getStats() {
+    const active = this.state.tasks.filter(t => !t.completed).length;
+    const completed = this.state.tasks.filter(t => t.completed).length;
+    return { active, completed };
+  }
+
+  setSearchQuery(query) {
+    this.state.searchQuery = query;
+    this.emit('store:search:changed', { query });
+  }
+
+  getSearchQuery() {
+    return this.state.searchQuery;
   }
 
   getSmartListTasks(listId) {
