@@ -33,3 +33,7 @@ Desktop.ini
 
 # Orch
 .orch/
+
+# Spec files
+SPEC.md
+spec.ir.json
