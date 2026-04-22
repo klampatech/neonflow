@@ -4,7 +4,8 @@
 
 **NEONFLOW** brings "acid rave meets brutalist productivity" — deep void backgrounds shattered by electric neons, chunky brutalist typography, and motion that feels physics-driven and satisfying.
 
-![NEONFLOW UI](screenshots/neonflow-ui.png)
+<img width="1503" height="993" alt="image" src="https://github.com/user-attachments/assets/4e8d3276-746f-4710-afc8-1004ed60d022" />
+
 
 ## Features
 
